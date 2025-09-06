@@ -25,11 +25,6 @@ struct sockaddr_in addr_out_from, addr_out_to, addr_in;
 OSCbuf osc_buffer;
 OSCbuf osc_recv_buff;
 
-char recbuf[3];
-
-int in_size;
-struct sockaddr_in in;
-
 dsmi_type_t default_interface = -1;
 
 #ifdef DSMI_SUPPORT_DSERIAL
@@ -120,6 +115,24 @@ int dsmi_connect_dserial(void)
 #endif
 
 #ifdef DSMI_SUPPORT_WIFI
+#ifdef __BLOCKSDS__
+int dsmi_wifi_thread(void *arg)
+{
+    int counter = 0;
+    while(wifi_enabled && default_interface == DSMI_WIFI)
+    {
+        cothread_yield_irq(IRQ_VBLANK);
+        // Send a keepalive beacon every 3 seconds
+        counter++;
+        if (counter >= 60 * 3)
+        {
+            counter = 0;
+            dsmi_write(0, 0, 0);
+        }
+    }
+    return 0;
+}
+#else
 void dsmi_timer_50ms(void) {
     Wifi_Timer(50);
 
@@ -136,6 +149,7 @@ void dsmi_timer_50ms(void) {
     }
 }
 #endif
+#endif
 
 #ifdef DSMI_SUPPORT_WIFI
 // Modified version of dswifi's init function that uses a custom timer handler
@@ -145,7 +159,9 @@ bool dsmi_wifi_init(void) {
     if (!Wifi_InitDefault(true))
         return false;
 
+#ifndef __BLOCKSDS__
     irqSet(IRQ_TIMER3, dsmi_timer_50ms); // steal timer IRQ
+#endif
     return true;
 }
 
@@ -195,7 +211,9 @@ int dsmi_connect_wifi(void)
 		
 		default_interface = DSMI_WIFI;
 		wifi_enabled = true;
-		
+#ifdef __BLOCKSDS__
+		cothread_create(dsmi_wifi_thread, NULL, 256, COTHREAD_DETACHED);
+#endif
 		return 1;
 	} else {
 		return 0;
@@ -381,6 +399,10 @@ int dsmi_read(u8* message, u8* data1, u8* data2)
 // Force receiving over Wifi
 int dsmi_read_wifi(u8* message, u8* data1, u8* data2)
 {
+	char recbuf[3];
+	socklen_t in_size;
+	struct sockaddr_in in;
+
 	int res = recvfrom(sockin, recbuf, 3, 0, (struct sockaddr*)&in, &in_size);
 	
 	if(res <= 0)
@@ -414,6 +436,8 @@ int dsmi_read_usb(u8* message, u8* data1, u8* data2)
 
 // ------------ OSC READ-------- //
 int dsmi_osc_read(){
+	socklen_t in_size;
+	struct sockaddr_in in;
 
 	int res = recvfrom(sockin, osc_recv_buff.buffer, OSC_MAX_SIZE, 0, (struct sockaddr*)&in, &in_size);
 	
