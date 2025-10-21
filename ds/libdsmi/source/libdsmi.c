@@ -156,13 +156,15 @@ void dsmi_timer_50ms(void) {
 // In addition to calling Wifi_Timer, new new handler also sends the DSMI keepalive
 // beacon.
 bool dsmi_wifi_init(void) {
+#ifdef __BLOCKSDS__
+    return Wifi_InitDefault(WFC_CONNECT | WIFI_ATTEMPT_DSI_MODE);
+#else
     if (!Wifi_InitDefault(true))
         return false;
 
-#ifndef __BLOCKSDS__
     irqSet(IRQ_TIMER3, dsmi_timer_50ms); // steal timer IRQ
-#endif
     return true;
+#endif
 }
 
 int dsmi_connect_wifi(void)
