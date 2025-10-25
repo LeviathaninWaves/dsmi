@@ -1,6 +1,6 @@
 [submodule "ds/libdsmi/dserial"]
 	path = ds/libdsmi/dserial
-	url = https://github.com/asiekierka/dserial
+	url = https://github.com/LeviathaninWaves/dserial
 [submodule "ds/libdsmi/tinyusb"]
 	path = ds/libdsmi/tinyusb
-	url = https://github.com/asiekierka/tinyusb
+	url = https://github.com/LeviathaninWaves/tinyusb
